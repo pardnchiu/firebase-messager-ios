@@ -4,6 +4,8 @@
 
 # Firebase 即時訊息 (iOS)
 
+**請自行添加 GoogleService-Info.plist**
+
 - Swift, [Userpics](https://userpics.craftwork.design)
 - Pardn Chiu 邱敬幃
 - [joball.tw/@pardnltd](https://joball.tw/@pardnltd)
