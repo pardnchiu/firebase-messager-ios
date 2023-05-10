@@ -39,5 +39,14 @@ extension UIView {
 			completion(nil)
 		}
 	};
+
+	public func tap(target: Any?,_ taps: Int,_ touches: Int,_ selector: Selector?) -> Self {
+		let tap = UITapGestureRecognizer(target: target, action: selector)._ {
+			$0.numberOfTapsRequired    = taps;
+			$0.numberOfTouchesRequired = touches;
+		};
+		self.addGestureRecognizer(tap);
+		return self;
+	};
 };
 

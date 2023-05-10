@@ -31,6 +31,8 @@ extension UIColor {
 		};
 	};
 
+	@objc public convenience init?(name value: String) { self.init(named: value); };
+
 	@objc public convenience init(hex value: String) 	{
 		let str: String = value.trimmingCharacters(in: .whitespaces).replace("#", "");
 		var rgb: UInt64 = 0;

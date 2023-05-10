@@ -1,9 +1,8 @@
-//
-//  bottomView.swift
-//  firebase-messager-ios
-//
-//  Created by Pardn on 2023/5/8.
-//
+/**
+ Copyright 2023 Pardn Ltd 帕登國際有限公司.
+ Created by Pardn Chiu 邱敬幃.
+ Email: chiuchingwei@icloud.com
+ */
 
 import Foundation
 import UIKit
@@ -12,16 +11,14 @@ import FirebaseAuth
 
 class bottomV: UIView {
 
-	var root: homeVC!
-	var body: UIStackView!
-	var btn_qrcode	: UIButton!
-	var btn_mode		: UIButton!
-	var btn_logout	: UIButton!
-	var btn_scanner	: UIButton!
-	var btn_ban			: UIButton!
-	var btn_unknow	: UIButton!
-	var btn_archieve: UIButton!
-	var btn_license	: UIButton!
+	var root				: homeVC!
+	var bodyStackV	: UIStackView!
+	var qrcodeBtn		: UIButton!
+	var modeBtn			: UIButton!
+	var logoutBtn		: UIButton!
+	var scannerBtn	: UIButton!
+	var archieveBtn	: UIButton!
+	var licenseBtn	: UIButton!
 
 	enum __target {
 		case account;
@@ -30,14 +27,14 @@ class bottomV: UIView {
 		case about;
 	};
 
-	convenience init(target: homeVC, show: __target) {
+	convenience init(root: homeVC, show: __target) {
 		self.init();
 
-		_=bg(color: _white)
+		_=bg(color: _white);
 
-		root = target;
+		self.root = root;
 
-		btn_qrcode = UIButton()
+		qrcodeBtn = UIButton()
 			.text(color: _black)
 			.img(UIImage(sys: "qrcode"))
 			.bg(color: _gray)
@@ -46,7 +43,7 @@ class bottomV: UIView {
 			.Heq(40)
 			.touch(down: self, #selector(showQrcodeViewController));
 
-		btn_mode = UIButton()
+		modeBtn = UIButton()
 			.text(color: _black)
 			.img(UIImage(sys: "moon.circle"))
 			.bg(color: _gray)
@@ -55,7 +52,7 @@ class bottomV: UIView {
 			.Heq(40)
 			.touch(down: self, #selector(changeMode));
 
-		btn_logout = UIButton()
+		logoutBtn = UIButton()
 			.text(color: _black)
 			.img(UIImage(sys: "rectangle.portrait.and.arrow.right"))
 			.bg(color: _gray)
@@ -64,7 +61,7 @@ class bottomV: UIView {
 			.Heq(40)
 			.touch(down: self, #selector(logout));
 
-		btn_scanner = UIButton()
+		scannerBtn = UIButton()
 			.text(color: _black)
 			.img(UIImage(sys: "qrcode.viewfinder"))
 			.bg(color: _gray)
@@ -73,46 +70,30 @@ class bottomV: UIView {
 			.Heq(40)
 			.touch(down: self, #selector(openScannerVC));
 
-		btn_ban = UIButton()
-			.text(color: _black)
-			.img(UIImage(sys: "person.2.slash"))
-			.bg(color: _gray)
-			.radius(20)
-			.Weq(40)
-			.Heq(40);
-
-		btn_unknow = UIButton()
-			.text(color: _black)
-			.img(UIImage(sys: "person.wave.2"))
-			.bg(color: _gray)
-			.radius(20)
-			.Weq(40)
-			.Heq(40);
-
-		btn_archieve = UIButton()
+		archieveBtn = UIButton()
 			.text(color: _black)
 			.img(UIImage(sys: "archivebox"))
 			.bg(color: _gray)
 			.radius(20)
 			.Weq(40)
-			.Heq(40);
+			.Heq(40)
+			.touch(down: self, #selector(openArchieveVC));
 
-		btn_license = UIButton()
+		licenseBtn = UIButton()
 			.text(color: _black)
 			.img(UIImage(sys: "l.circle"))
 			.bg(color: _gray)
 			.radius(20)
 			.Weq(40)
-			.Heq(40);
+			.Heq(40)
+			.touch(down: self, #selector(openLicense));
 
-		body = UIStackView(axis: .horz, align: .center, fill: .eqSpace, gap: 30)
+		bodyStackV = UIStackView(axis: .horz, align: .center, fill: .eqSpace, gap: 30)
 
-		_=self
-			.child([
-				body
+		_=child([
+				bodyStackV
 					.child([
-						btn_scanner,
-						btn_ban
+						scannerBtn
 					])
 					.Heq(60)
 			])
@@ -124,45 +105,43 @@ class bottomV: UIView {
 			])
 			.clip(view: true)
 
-		_=body
+		_=bodyStackV
 			.Xeq(X: self)
 			.Yeq(Y: self);
 	};
 
 	func change(to: __target) {
-		body.subviews.forEach { e in
+		bodyStackV.subviews.forEach { e in
 			e.removeFromSuperview();
 		};
 		switch to {
 			case .account:
-				_=body
+				_=bodyStackV
 					.child([
-						btn_qrcode,
-						btn_mode,
-						btn_logout
+						qrcodeBtn,
+						modeBtn,
+						logoutBtn
 					]);
 				break;
 			case .friends:
-				_=body
+				_=bodyStackV
 					.child([
-						btn_scanner,
-						btn_ban
+						scannerBtn
 					]);
 				break;
 			case .chats:
-				_=body
+				_=bodyStackV
 					.child([
-						btn_unknow,
-						btn_archieve
+						archieveBtn
 					]);
 				break;
 			case .about:
-				_=body
+				_=bodyStackV
 					.child([
-						btn_license,
+						licenseBtn,
 					]);
 				break;
-		}
+		};
 	};
 
 	@objc func showQrcodeViewController() {
@@ -181,19 +160,38 @@ class bottomV: UIView {
 		};
 	};
 
-	var isDark: Bool = false;
+	@objc func openArchieveVC() {
+		let vc = archieveVC();
+		guard let _ = root.presentedViewController else {
+			root.present(vc, animated: true);
+			return;
+		};
+	};
+
+	@objc func openLicense() {
+		let vc = webVC();
+		vc.url = "https://github.com/pardnchiu/firebase-messager-ios/blob/main/LICENSE";
+		guard let _ = root.presentedViewController else {
+			root.present(vc, animated: true);
+			return;
+		};
+	};
+
 	@objc func changeMode() {
 		let isDark = window?.traitCollection.userInterfaceStyle == .dark;
 		window?.overrideUserInterfaceStyle = isDark ? .light : .dark
 	};
 
 	@objc func logout() {
-		let firebaseAuth = Auth.auth()
+		let firebaseAuth = Auth.auth();
 		do {
-			try firebaseAuth.signOut()
+			try firebaseAuth.signOut();
 		} catch let signOutError as NSError {
 			print("Error signing out: %@", signOutError)
-		}
+		};
+		_auth 		= [:];
+		_friends 	= [];
+		_chats 		= [];
 		root.dismiss(animated: true);
 	};
 };

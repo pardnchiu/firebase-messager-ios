@@ -9,11 +9,14 @@ import UIKit
 
 class readmeV: UIView {
 
+	var root: homeVC!
 	var headerLbl	: UILabel!
 	var bodyStackV: UIStackView!
 
-	convenience init(isShow: Bool) {
+	convenience init(root: homeVC) {
 		self.init(0, 0, vw, vh);
+
+		self.root = root;
 
 		headerLbl = UILabel(15, 0, vw - 40, 100)
 			.attr(txt: "關於我", clr: _black, align: .left)
@@ -39,15 +42,21 @@ class readmeV: UIView {
 							UILabel()
 								.text("・Pardn Chiu 邱敬幃", color: _black, align: .left, row: 0, wrap: .byTruncatingTail)
 								.font(weight: .regular, size: 20),
-							UILabel()
-								.text("・joball.tw/@pardnltd", color: .systemBlue, align: .left, row: 0, wrap: .byTruncatingTail)
-								.font(weight: .regular, size: 20),
-							UILabel()
-								.text("・linkedin.com/in/pardnchiu", color: .systemBlue, align: .left, row: 0, wrap: .byTruncatingTail)
-								.font(weight: .regular, size: 20),
-							UILabel()
-								.text("・lin.ee/Gtcb5kc", color: .systemBlue, align: .left, row: 0, wrap: .byTruncatingTail)
-								.font(weight: .regular, size: 20),
+							UIButton()
+								.padding(0)
+								.text("・joball.tw/@pardnltd", color: .systemBlue)
+								.font(weight: .regular, size: 20)
+								.touch(down: self, #selector(openJOBALL)),
+							UIButton()
+								.padding(0)
+								.text("・linkedin.com/in/pardnchiu", color: .systemBlue)
+								.font(weight: .regular, size: 20)
+								.touch(down: self, #selector(openLinkedin)),
+							UIButton()
+								.padding(0)
+								.text("・lin.ee/Gtcb5kc", color: .systemBlue)
+								.font(weight: .regular, size: 20)
+								.touch(down: self, #selector(openLine))
 						]),
 					UIView()
 				]),
@@ -58,6 +67,33 @@ class readmeV: UIView {
 			.Teq(T: self)
 			.Leq(L: self)
 			.Beq(B: self)
-			.Req(R: self)
+			.Req(R: self);
+	};
+
+	@objc func openJOBALL() {
+		let vc = webVC();
+		vc.url = "https://joball.tw/@pardnltd";
+		guard let _ = root.presentedViewController else {
+			root.present(vc, animated: true);
+			return;
+		};
+	};
+
+	@objc func openLinkedin() {
+		let vc = webVC();
+		vc.url = "https://www.linkedin.com/in/pardnchiu";
+		guard let _ = root.presentedViewController else {
+			root.present(vc, animated: true);
+			return;
+		};
+	};
+
+	@objc func openLine() {
+		let vc = webVC();
+		vc.url = "https://lin.ee/Gtcb5kc";
+		guard let _ = root.presentedViewController else {
+			root.present(vc, animated: true);
+			return;
+		};
 	};
 };

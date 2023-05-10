@@ -22,12 +22,12 @@ class chatsV: UIView {
 			.bg(color: _white);
 		
 		bodyTableV = UITableView()
+			.proto(delegate, datasource)
+			.cell(chatsTableVCell.self, "chatsTableVCell")
 			.padding(T: 130)
 			.bg(color: .clear)
 			.separator(color: .clear)
-			.indicator(val: false)
-			.proto(delegate, datasource)
-			.cell(chatsTableVCell.self, "chatsTableVCell");
+			.indicator(val: false);
 		
 		_=child([
 			bodyTableV,

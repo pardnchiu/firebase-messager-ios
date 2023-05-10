@@ -78,5 +78,7 @@ extension UIButton {
 		return self;
 	};
 
+	public func padding(_ val: CGFloat) -> Self { var new = conf; new.contentInsets = NSDirectionalEdgeInsets(top: val, leading: val, bottom: val, trailing: val); self.conf = new; return self; };
+	
 	public func touch(down: Any,_ action: Selector) -> Self { self.addTarget(down, action: action, for: .touchDown); return self; };
 };

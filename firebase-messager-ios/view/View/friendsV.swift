@@ -22,12 +22,12 @@ class friendsV: UIView {
 			.bg(color: _white);
 		
 		bodyTableV = UITableView()
+			.proto(delegate, datasoruce)
+			.cell(friendsTableVCell.self, "friendsTableVCell")
 			.padding(T: 130)
 			.bg(color: .clear)
 			.separator(color: .clear)
-			.indicator(val: false)
-			.proto(delegate, datasoruce)
-			.cell(friendsTableVCell.self, "friendsTableVCell");
+			.indicator(val: false);
 		
 		_=child([
 			bodyTableV,

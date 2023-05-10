@@ -1,9 +1,8 @@
-//
-//  chatVC.swift
-//  firebase-messager-ios
-//
-//  Created by Pardn on 2023/5/8.
-//
+/**
+ Copyright 2023 Pardn Ltd 帕登國際有限公司.
+ Created by Pardn Chiu 邱敬幃.
+ Email: chiuchingwei@icloud.com
+ */
 
 import Foundation
 import UIKit
@@ -28,21 +27,26 @@ class chatVC: UIViewController {
 	
 	var ref: DatabaseReference!
 
-	var chats: [[String:Any]] = [];
-	var keyH: CGFloat = 0;
+	var chats	: [[String:Any]] = [];
+	var keyH	: CGFloat = 0;
 
 	override func viewDidLoad() {
 		super.viewDidLoad();
 
-		ref = Database.database().reference();
-
-		getChat();
-
 		let isDark = traitCollection.userInterfaceStyle == .dark;
+		let isArchieve = _archieve.filter { e in
+			if let uid = uid, let check = e["uid"] as? String {
+				return uid == check;
+			};
+			return false;
+		}.count == 1;
+
+		ref = Database.database().reference();
 
 		bodyStackV = UIStackView(axis: .vert, align: .left, fill: .fill);
 
 		userStackV = UIStackView(axis: .horz, align: .left, fill: .eqSpace)
+			.padding(R: 10)
 			.Weq(vw)
 			.Heq(70)
 			.layer([
@@ -53,14 +57,16 @@ class chatVC: UIViewController {
 			]);
 
 		headBtn = UIButton()
+			.touch(down: self, #selector(presentUserVC))
 			.bg(color: _gray)
 			.bg(image: UIImage(name: head ?? ""), mode: .scaleAspectFit)
 			.radius(20)
+			.clip(view: true)
 			.Weq(40)
-			.Heq(40)
-			.clip(view: true);
+			.Heq(40);
 
 		nameBtn = UIButton()
+			.touch(down: self, #selector(presentUserVC))
 			.text(name ?? "", color: _black)
 			.font(weight: .medium, size: 20)
 			.Heq(40);
@@ -68,6 +74,8 @@ class chatVC: UIViewController {
 		chatTableV = UITableView()
 			.padding(B: 50)
 			.proto(self, self)
+			.cell(chatOwnerVCell.self, "chatOwnerVCell")
+			.cell(chatGuestVCell.self, "chatGuestVCell")
 			.bg(color: .clear)
 			.separator(color: .clear)
 			.rowH(auto: 50)
@@ -94,10 +102,10 @@ class chatVC: UIViewController {
 			.Heq(50);
 
 		sendBtn = UIButton()
+			.touch(down: self, #selector(sendMessage))
 			.bg(image: UIImage(sys: "paperplane.fill"), color: _black, mode: .scaleAspectFit)
 			.Weq(30)
-			.Heq(50)
-			.touch(down: self, #selector(sendMessage));
+			.Heq(50);
 
 		_=view
 			.child([
@@ -107,14 +115,24 @@ class chatVC: UIViewController {
 					.child([
 						userStackV
 							.child([
-								UIView(),
+								UIView()
+									.Weq(30)
+									.Heq(70),
 								UIStackView(axis: .horz, align: .left)
 									.padding(T: 15)
 									.child([
 										headBtn,
 										nameBtn
 									]),
-								UIView()
+								isArchieve ?
+									UIView()
+										.Weq(30)
+										.Heq(70) :
+									UIButton()
+										.touch(down: self, #selector(addToArchieve))
+										.bg(image: UIImage(sys: "archivebox"), color: _black, mode: .scaleAspectFit)
+										.Weq(30)
+										.Heq(70)
 							]),
 						chatTableV
 					])
@@ -143,8 +161,29 @@ class chatVC: UIViewController {
 			.Beq(B: view)
 			.Req(R: view);
 
+		getChat();
+
 		let notify = NotificationCenter.default
 		notify.addObserver(self, selector: #selector(showkeyboard), name: UIResponder.keyboardWillShowNotification, object: nil)
+	};
+
+	@objc func addToArchieve() {
+		guard let auth = Auth.auth().currentUser, let uid = uid else { return; };
+		ref.child("chatbox/\(auth.uid)/\(uid)").updateChildValues([
+			"isArchieve": true
+		]) { err, ref in
+			if let err = err { print(err.localizedDescription); return; }
+			self.dismiss(animated: true);
+		};
+	};
+
+	@objc func presentUserVC() {
+		let vc = userVC()._ { e in
+			e.uid 	= uid;
+			e.head 	= head;
+			e.name 	= name;
+		};
+		self.present(vc, animated: true);
 	};
 
 	@objc func showkeyboard(aNotification: NSNotification) {
@@ -182,9 +221,7 @@ class chatVC: UIViewController {
 		guard let auth = Auth.auth().currentUser, let uid = uid else { return; };
 
 		ref.child("chats").child(auth.uid).child(uid).observe(.childAdded, with: { snap in
-			guard let value = snap.value as? NSDictionary else { return; };
-
-			guard let data = value as? [String:Any] else { return; };
+			let data = snap.value as? [String:Any] ?? [:];
 			guard
 				let content = data["content"] as? String,
 				let from = data["from"] as? String,
@@ -194,10 +231,10 @@ class chatVC: UIViewController {
 			let isOwner = from == auth.uid;
 
 			self.chats.append([
-				"isOwner": isOwner,
-				"uid": from,
-				"message": content,
-				"upload": upload
+				"isOwner"	: isOwner,
+				"uid"			: from,
+				"message"	: content,
+				"upload"	: upload
 			]);
 			self.chatTableV.insertRows(at: [IndexPath(item: self.chats.count-1, section: 0)], with: .automatic)
 			self.chatTableV.setNeedsLayout();
@@ -208,13 +245,14 @@ class chatVC: UIViewController {
 
 	@objc func sendMessage() {
 		guard
-			let authUid = Auth.auth().currentUser?.uid,
-			let authHead = fauth["head"],
-			let authName = fauth["name"],
-			let uid = uid,
-			let head = head,
-			let name = name,
-			let content = inputTextV.text else { return; };
+			let authUid 	= Auth.auth().currentUser?.uid,
+			let authHead 	= _auth["head"],
+			let authName 	= _auth["name"],
+			let uid 	= uid,
+			let head 	= head,
+			let name 	= name,
+			let content = inputTextV.text
+		else { return; };
 
 		inputTextV.text = nil;
 		
@@ -240,7 +278,8 @@ class chatVC: UIViewController {
 			"name"		: name,
 			"last"		: content,
 			"updated"	: timestamp,
-			"read"		: "1"
+			"read"		: "1",
+			"isArchieve": false
 		]);
 		ref.child("chatbox").child(uid).child(authUid).updateChildValues([
 			"uid"			: authUid,
@@ -248,7 +287,8 @@ class chatVC: UIViewController {
 			"name"		: authName,
 			"last"		: content,
 			"updated"	: timestamp,
-			"read"		: "0"
+			"read"		: "0",
+			"isArchieve": false
 		]);
 	};
 };
@@ -281,127 +321,16 @@ extension chatVC: UITableViewDelegate, UITableViewDataSource {
 		guard let isOwner = data["isOwner"] as? Bool, let message = data["message"] as? String, let upload = data["upload"] as? String else { return UITableViewCell() };
 
 		if (isOwner) {
-			let cell = chatOwnerVCell()._ { e in
-				_=e.messageLbl.text(message);
-				_=e.dateLbl.text(upload);
-			};
+			guard let cell = tableView.dequeueReusableCell(withIdentifier: "chatOwnerVCell") as? chatOwnerVCell else { return UITableViewCell(); };
+			_=cell.messageLbl.text(message);
+			_=cell.dateLbl.text(upload);
 			return cell;
 		}
 		else {
-			let cell = chatGuestVCell()._ { e in
-				_=e.messageLbl.text(message);
-				_=e.dateLbl.text(upload);
-			};
+			guard let cell = tableView.dequeueReusableCell(withIdentifier: "chatGuestVCell") as? chatGuestVCell else { return UITableViewCell(); };
+			_=cell.messageLbl.text(message);
+			_=cell.dateLbl.text(upload);
 			return cell;
-		}
-	}
-}
-
-class chatOwnerVCell: UITableViewCell {
-
-	var bodyStackV: UIStackView!
-	var messageLbl: UILabel!
-	var dateLbl   : UILabel!
-
-	override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-		super.init(style: style, reuseIdentifier: reuseIdentifier);
-
-		_=bg(color: .clear);
-
-		selectedBackgroundView = UIView();
-
-		bodyStackV = UIStackView(axis: .vert, align: .right)
-			.padding(vert: 15, horz: 10)
-			.bg(color: .systemBlue)
-			.radius(10);
-
-		messageLbl = UILabel()
-			.text("asdfasdfasdfasasdfasdfasdfasasdfasdfasdfasasdfasdfasdfasasdfasdfasdfasasdfasdfasdfas", color: .white, align: .left, row: 0, wrap: .byClipping)
-
-		dateLbl = UILabel()
-			.text("""
-19:00
-2023/10/10
-""", color: UIColor(hex: "777"), align: .right, row: 0, wrap: .byClipping)
-			.font(italic: 15)
-			.alpha(0)
-
-		_=contentView
-			.child([
-				bodyStackV
-					.child([
-						messageLbl
-					]),
-				dateLbl
-			])
-
-		_=bodyStackV
-			.Teq(T: contentView, 10)
-			.Lge(L: contentView, 110)
-			.Beq(B: contentView, -10)
-			.Req(R: contentView, -15)
-
-		_=dateLbl
-			.Beq(B: bodyStackV, -10)
-			.Req(L: bodyStackV, -10)
-	};
-
-	required init?(coder aDecoder: NSCoder) {
-		super.init(coder:aDecoder)
+		};
 	};
 };
-
-class chatGuestVCell: UITableViewCell {
-
-	var bodyStackV: UIStackView!
-	var messageLbl: UILabel!
-	var dateLbl   : UILabel!
-
-	override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-		super.init(style: style, reuseIdentifier: reuseIdentifier);
-
-		_=bg(color: .clear);
-
-		selectedBackgroundView = UIView()
-
-		bodyStackV = UIStackView(axis: .vert, align: .left)
-			.padding(vert: 15, horz: 10)
-			.bg(color: .blue)
-			.radius(10);
-
-		messageLbl = UILabel()
-			.text("adfasdfasdf", color: .white, align: .left, row: 0, wrap: .byClipping);
-
-		dateLbl = UILabel()
-			.text("""
-19:00
-2023/10/10
-""", color: UIColor(hex: "777"), align: .left, row: 0, wrap: .byClipping)
-			.font(italic: 15)
-			.alpha(0)
-
-		_=contentView
-			.child([
-				bodyStackV
-					.child([
-						messageLbl
-					]),
-				dateLbl
-			])
-
-		_=bodyStackV
-			.Teq(T: contentView, 10)
-			.Leq(L: contentView, 15)
-			.Beq(B: contentView, -10)
-			.Rle(R: contentView, -vw / 4)
-
-		_=dateLbl
-			.Beq(B: bodyStackV, -10)
-			.Leq(R: bodyStackV, 10)
-	};
-
-	required init?(coder aDecoder: NSCoder) {
-		super.init(coder:aDecoder)
-	};
-}
-

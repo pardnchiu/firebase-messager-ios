@@ -1,12 +1,14 @@
-//
-//  headSelectorViewController.swift
-//  firebase-messager-ios
-//
-//  Created by Pardn on 2023/5/8.
-//
+/**
+ Copyright 2023 Pardn Ltd 帕登國際有限公司.
+ Created by Pardn Chiu 邱敬幃.
+ Email: chiuchingwei@icloud.com
+ */
 
 import Foundation
 import UIKit
+import FirebaseCore
+import FirebaseAuth
+import FirebaseDatabase
 
 class headSelectVC: UIViewController {
 
@@ -34,10 +36,14 @@ class headSelectVC: UIViewController {
 
 	var grid: UICollectionView!
 
+	var ref: DatabaseReference!
+
 	override func viewDidLoad() {
 		super.viewDidLoad();
 
 		let isDark = traitCollection.userInterfaceStyle == .dark;
+		
+		ref = Database.database().reference();
 
 		let gridLayout = UICollectionViewFlowLayout()._ { e in
 			let width: CGFloat = CGFloat(vw / 3)
@@ -52,33 +58,50 @@ class headSelectVC: UIViewController {
 			.cell(headCollVCell.self, "headCollectionViewCell")
 			.bg(color: .clear);
 
-		grid.allowsFocus = true;
-
 		_=view
 			.child([
 				UIVisualEffectView(style: isDark ? .dark : .extraLight)
 					.frame(0, 0, vw, vh),
 				grid
 			]);
-	};
 
-	override func viewDidAppear(_ animated: Bool) {
 		_=grid
 			.Teq(T: view)
 			.Leq(L: view)
 			.Beq(B: view)
-			.Req(R: view)
-	}
+			.Req(R: view);
+	};
 
 	@objc func closeSelector(_ sender: UIButton) {
-		let name = sender.configuration?.background.image?.imageAsset?.value(forKey: "assetName") as? String ?? "";
-		print(name)
-		if let presenter = presentingViewController as? signupVC {
-			_=presenter.headBtn
+		guard
+			let name = sender.configuration?.background.image?.imageAsset?.value(forKey: "assetName") as? String
+		else { return; };
+
+		if let vc = presentingViewController as? signupVC {
+			_=vc.headBtn
 				.bg(image: UIImage(name: name), mode: .scaleAspectFit)
 		}
-		self.dismiss(animated: true)
-	}
+		else if let vc = presentingViewController as? homeVC {
+			_=vc.accountV.headBtn
+				.img(UIImage(name: name))
+
+			guard let auth = Auth.auth().currentUser else { return; };
+
+			ref.child("users/\(auth.uid)").updateChildValues([
+				"head": name
+			], withCompletionBlock: { err, ref in
+				if let err = err { return print(err.localizedDescription); };
+				self.alert("成功更改頭像");
+			});
+		};
+	};
+
+	func alert(_ message: String) {
+		let alert = UIAlertController(title: "通知", message: message, preferredStyle: .alert);
+		let cancel = UIAlertAction(title: "確定", style: .cancel, handler: nil)
+		alert.addAction(cancel)
+		self.present(alert, animated: true);
+	};
 };
 
 extension headSelectVC: UICollectionViewDelegate, UICollectionViewDataSource {
@@ -92,11 +115,16 @@ extension headSelectVC: UICollectionViewDelegate, UICollectionViewDataSource {
 	};
 
 	func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-		guard let cell = collectionView.cell(reuse: "headCollectionViewCell", indexPath) as? headCollVCell else { return UICollectionViewCell(); };
 		let data: String = heads[indexPath.row];
+
+		guard
+			let cell = collectionView.cell(reuse: "headCollectionViewCell", indexPath) as? headCollVCell
+		else { return UICollectionViewCell(); };
+
 		_=cell.headBtn
-			.bg(image: UIImage(name: data), mode: .scaleAspectFit)
-			.touch(down: self, #selector(closeSelector));
+			.touch(down: self, #selector(closeSelector))
+			.bg(image: UIImage(name: data), mode: .scaleAspectFit);
+
 		return cell;
 	};
 };

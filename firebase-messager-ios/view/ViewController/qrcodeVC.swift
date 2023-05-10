@@ -1,157 +1,119 @@
-//
-//  qrcodeViewController.swift
-//  firebase-messager-ios
-//
-//  Created by Pardn on 2023/5/8.
-//
+/**
+ Copyright 2023 Pardn Ltd 帕登國際有限公司.
+ Created by Pardn Chiu 邱敬幃.
+ Email: chiuchingwei@icloud.com
+ */
 
 import Foundation
 import UIKit
 import FirebaseCore
 import FirebaseAuth
+import CoreImage.CIFilterBuiltins
 
 class qrcodeVC: UIViewController {
 
-	var qrcodeView: UIImageView!
-	var hintLabel:  UILabel!
-	var buttonStackView: UIStackView!
-	var shareButton: UIButton!
-	var downloadButton: UIButton!
-	var scannerButton: UIButton!
+	var qrcodeV			: UIImageView!
+	var hintLbl			: UILabel!
+	var buttonStackV: UIStackView!
+	var shareBtn		: UIButton!
+	var downloadBtn	: UIButton!
+	var scannerBtn	: UIButton!
 
 	override func viewDidLoad() {
 		super.viewDidLoad();
 
 		let isDark = traitCollection.userInterfaceStyle == .dark;
 
-		let uid = Auth.auth().currentUser?.uid ?? ""
+		guard let uid = Auth.auth().currentUser?.uid else { return; };
 
-		qrcodeView = UIImageView(0, 0, vw - 120, vw - 120)
-			.img(generateBarCode128(barCodeStr: uid, barCodeSize: CGSize(vw - 120, vw - 120)), mode: .scaleAspectFill)
+		qrcodeV = UIImageView(0, 0, vw - 120, vw - 120)
+			.img(buildQRCode(uid, width: vw - 120, height: vw - 120), mode: .scaleAspectFill)
 			.radius(20)
 			.clip(view: true)
 
-		hintLabel = UILabel(0, 0, vw, 30)
+		hintLbl = UILabel(0, 0, vw, 30)
 			.text(uid, color: _darkGray, align: .center, row: 1, wrap: .byClipping)
 
-		buttonStackView = UIStackView(axis: .horz, align: .left, gap: 30);
+		buttonStackV = UIStackView(axis: .horz, align: .left, gap: 30);
 
-		shareButton = UIButton()
-			.text(color: .black)
+		shareBtn = UIButton()
+			.text(color: _black)
 			.img(UIImage(sys: "square.and.arrow.up.on.square"))
-			.bg(color: .white)
+			.bg(color: _gray)
 			.radius(20)
 			.Weq(40)
 			.Heq(40);
 
-		downloadButton = UIButton()
-			.text(color: .black)
+		downloadBtn = UIButton()
+			.text(color: _black)
 			.img(UIImage(sys: "tray.and.arrow.down"))
-			.bg(color: .white)
+			.bg(color: _gray)
 			.radius(20)
 			.Weq(40)
 			.Heq(40);
 
-		scannerButton = UIButton()
-			.text("掃描條碼", color: .black)
+		scannerBtn = UIButton()
+			.touch(down: self, #selector(openScannerVC))
+			.text("掃描條碼", color: _black)
+			.font(weight: .medium, size: 18)
 			.img(UIImage(sys: "qrcode.viewfinder"), align: .left, gap: 10)
-			.bg(color: .white)
+			.bg(color: _gray)
+			.radius(5)
 
 		_=view
 			.child([
 				UIVisualEffectView(style: isDark ? .dark : .extraLight)
 					.frame(0, 0, vw, vh),
-				qrcodeView,
-				hintLabel,
-				buttonStackView
+				qrcodeV,
+				hintLbl,
+				buttonStackV
 					.child([
-						shareButton,
-						downloadButton
+						shareBtn,
+						downloadBtn
 					]),
-				scannerButton
-			])
+				scannerBtn
+			]);
 
-		_=qrcodeView
+		_=qrcodeV
 			.Xeq(X: view)
 			.Teq(T: view, 80)
 			.Weq(vw - 120)
 			.Heq(vw - 120);
 
-		_=hintLabel
+		_=hintLbl
 			.Xeq(X: view)
-			.Teq(B: qrcodeView, 10)
+			.Teq(B: qrcodeV, 10)
 			.Weq(vw);
 
-		_=buttonStackView
+		_=buttonStackV
 			.Xeq(X: view)
-			.Teq(B: hintLabel, 40);
+			.Teq(B: hintLbl, 40);
 
-		_=scannerButton
+		_=scannerBtn
 			.Xeq(X: view)
 			.Beq(B: view, -60)
 			.Weq(vw - 120)
 			.Heq(40)
-
 	};
 
-	func generateBarCode128(barCodeStr:String, barCodeSize:CGSize) -> UIImage? {
-		//将传入的string转成nsstring，再编码
-		let stringData = barCodeStr.data(using: .utf8)
+	@objc func openScannerVC() {
+		let vc = scannerVC();
+		present(vc, animated: true);
+	};
 
+	func buildQRCode(_ txt: String, width: CGFloat, height: CGFloat) -> UIImage? {
+		let data = txt.data(using: .utf8);
 
-		//系统自带能生成的码
-		//        CIAztecCodeGenerator 二维码
-		//        CICode128BarcodeGenerator 条形码
-		//        CIPDF417BarcodeGenerator
-		//        CIQRCodeGenerator     二维码
-		let qrFilter = CIFilter(name: "CIQRCodeGenerator")
-		qrFilter?.setDefaults()
-		qrFilter?.setValue(stringData, forKey: "inputMessage")
+		let filter = CIFilter.qrCodeGenerator();
+		filter.setDefaults()
+		filter.setValue(data, forKey: "inputMessage")
 
-		let outputImage:CIImage? = qrFilter?.outputImage
+		guard let ciimage = filter.outputImage else { return nil; };
 
-		/*
-		 生成的条形码需要对其进行消除模糊处理，本文提供两种方法消除模糊，其原理都是放大条码，但项目中需要在条码底部加上条码内容文字，使用其方法一会模糊并变小文字，所以使用方法二，需要各位去研究下原因哈。。。
+		let scaleX: CGFloat = width / ciimage.extent.size.width;
+		let scaleY: CGFloat = height / ciimage.extent.size.height;
+		let scaleResult = ciimage.transformed(by: CGAffineTransformScale(CGAffineTransformIdentity, scaleX, scaleY));
 
-		 */
-
-
-		// 消除模糊方法一
-		//        let context = CIContext()
-		//        let cgImage = context.createCGImage(outputImage!, fromRect: outputImage!.extent)
-
-		//        let image = UIImage(CGImage: cgImage, scale: 1.0, orientation: UIImageOrientation.Up)
-		//
-		//        // Resize without interpolating
-		//        let scaleRate:CGFloat = 20.0
-		//        let resized = resizeImage(addText(image), quality: CGInterpolationQuality.None, rate: scaleRate)
-
-		// 消除模糊方法二
-		let scaleX:CGFloat = barCodeSize.width/outputImage!.extent.size.width; // extent 返回图片的frame
-		let scaleY:CGFloat = barCodeSize.height/outputImage!.extent.size.height;
-		let resultImage = outputImage?.transformed(by: CGAffineTransformScale(CGAffineTransformIdentity, scaleX, scaleY))
-		let image = UIImage(ciImage: resultImage!)
-
-		return image //addText(image,textName: barCodeStr);
-	}
-
-//	private func getQRCode(id: String) -> UIImage? {
-//		let filter1 = CIFilter.qrCodeGenerator();
-//		filter1.setDefaults();
-//		filter1.setValue(id.data(using: String.Encoding.ascii), forKey: "inputMessage");
-//		filter1.setValue("H", forKey: "inputCorrectionLevel");
-//
-//		guard let image = filter1.outputImage else { return nil }
-//		//, let filter2 = CIFilter(name: "CISourceOverCompositing");
-////		guard let logoImage = UIImage(named: "logo")?.cgImage else { return nil; };
-////		let logo = CIImage(cgImage: logoImage)
-////		let centerTransform = CGAffineTransform(translationX: image.extent.midX - (logo.extent.size.width / 2), y: image.extent.midY - (logo.extent.size.height / 2));
-////		filter2.setValue(logo.transformed(by: centerTransform), forKey: "inputImage");
-////		filter2.setValue(image, forKey: "inputBackgroundImage");
-////
-////		guard let result = filter2.outputImage else { return nil };
-//		return UIImage(ciImage: image);
-////		guard let retultImage  else { return nil };
-////		return resultImage
-//	};
+		return UIImage(ciImage: scaleResult);
+	};
 };

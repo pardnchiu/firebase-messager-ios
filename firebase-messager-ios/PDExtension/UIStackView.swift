@@ -88,6 +88,15 @@ extension UIStackView {
 		return self;
 	};
 
+	public func padding(R: CGFloat) -> Self {
+		let t: CGFloat = directionalLayoutMargins.top;
+		let l: CGFloat = directionalLayoutMargins.leading;
+		let b: CGFloat = directionalLayoutMargins.bottom;
+		self.isLayoutMarginsRelativeArrangement = true;
+		self.directionalLayoutMargins = NSDirectionalEdgeInsets(top: t, leading: l, bottom: b, trailing: R);
+		return self;
+	};
+
 	public func padding(B: CGFloat) -> Self {
 		let t: CGFloat = self.directionalLayoutMargins.top;
 		let l: CGFloat = self.directionalLayoutMargins.leading;

@@ -1,0 +1,8 @@
+**/.DS_Store
+**/sass
+**/*.scss
+**/*.css.map
+**/workspace.code-workspace
+**/*.js
+**/GoogleService-Info.plist
+!**/*.min.js

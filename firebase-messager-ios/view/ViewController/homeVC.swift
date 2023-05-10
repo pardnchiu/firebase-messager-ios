@@ -6,10 +6,13 @@
 
 import UIKit;
 import FirebaseCore
-import FirebaseDatabase
 import FirebaseAuth
+import FirebaseDatabase
 
-var fauth: [String:String] = [:]
+var _auth			: [String:String] = [:];
+var _friends	: [[String:Any]] 	= [];
+var _chats		: [[String:Any]] 	= [];
+var _archieve	: [[String:Any]] 	= [];
 
 class homeVC: UIViewController {
 
@@ -25,25 +28,20 @@ class homeVC: UIViewController {
 
 	var ref: DatabaseReference!
 
-	var users: [[String:Any]] = [];
-	var chats: [[String:Any]] = [];
-
 	override func viewDidLoad() {
 		super.viewDidLoad();
 
 		ref = Database.database().reference();
 
-		getAuth();
-		getFriends();
-		getChats();
-
-		bodyScrollV = UIScrollView()._ { e in
-			e.delegate = self;
-			e.bounces = false;
-			e.contentSize = CGSize((vw - 40) * 3 + vw, vh);
-			e.contentOffset = CGPoint(vw - 40, 0)
-			_=e.bg(color: _white);
-		};
+		bodyScrollV = UIScrollView()
+			.proto(self)
+			.bg(color: _white)
+			.indicator(val: false)
+			._ { e in
+				e.bounces = false;
+				e.contentSize = CGSize((vw - 40) * 3 + vw, vh);
+				e.contentOffset = CGPoint(vw - 40, 0)
+			};
 
 		bodyStackV = UIStackView(axis: .horz, align: .left);
 
@@ -56,10 +54,10 @@ class homeVC: UIViewController {
 		chatsV = firebase_messager_ios.chatsV(self, self)
 			.Weq(vw - 40);
 
-		readmeV = firebase_messager_ios.readmeV(isShow: false)
+		readmeV = firebase_messager_ios.readmeV(root: self)
 			.Weq(vw);
 
-		bottomV = firebase_messager_ios.bottomV(target: self, show: .friends)
+		bottomV = firebase_messager_ios.bottomV(root: self, show: .friends)
 			.Heq(60);
 
 		_=view
@@ -109,23 +107,28 @@ class homeVC: UIViewController {
 		_=readmeV
 			.Teq(T: bodyStackV)
 			.Beq(B: bodyStackV);
+
+		getAuth();
+		getFriends();
+		getChats();
 	};
 
 	func getAuth() {
-		guard let auth = Auth.auth().currentUser else { return self.dismiss(animated: true); };
-		let uid 	= auth.uid;
-		let email = auth.email ?? "";
+		guard let auth = Auth.auth().currentUser else { return; };
 
-		ref.child("users").child(uid).observeSingleEvent(of: .value, with: { snap in
-			let data = snap.value as? [String:Any] ?? [:];
-			let head = data["head"] as? String ?? "";
-			let name = data["name"] as? String ?? "";
+		ref.child("users/\(auth.uid)").observeSingleEvent(of: .value, with: { snap in
+			guard
+				let data = snap.value as? [String:Any],
+				let head = data["head"] as? String,
+				let name = data["name"] as? String,
+				let email = auth.email
+			else { return; };
 
-			fauth = [
-				"uid"		: uid,
+			_auth = [
+				"uid"		: auth.uid,
 				"head"	: head,
 				"name"	: name,
-				"email"	: email
+				"email"	: email,
 			];
 
 			_=self.accountV._ { e in
@@ -137,87 +140,122 @@ class homeVC: UIViewController {
 	};
 
 	func getFriends() {
-		/*
+		guard let auth = Auth.auth().currentUser else { return; };
 
-		 firebase 資料格式
+		ref.child("friends/\(auth.uid)").observe(.childAdded, with: { snap in
+			guard
+				let data = snap.value as? [String:Any],
+				let head = data["head"] as? String,
+				let name = data["name"] as? String
+			else { return; };
 
-		 friends
-		 - uid (個人)
-		 		- uid (好友)
-		 			- head: String
-		 			- name: String
-
-		 */
-		guard let userid = Auth.auth().currentUser?.uid else { return; };
-
-		ref.child("friends").child(userid).observeSingleEvent(of: .value, with: { snap in
-			guard let value = snap.value as? NSDictionary else { return; };
-
-			value.allKeys.forEach { e in
-				guard let user = value[e] as? [String:Any] else { return; };
-				guard let head = user["head"] as? String, let name = user["name"] as? String else { return; };
-
-				self.users.append([
-					"uid": e,
-					"head": head,
-					"name": name
-				]);
-			};
+			_friends.append([
+				"uid"	: snap.key,
+				"head": head,
+				"name": name
+			]);
 
 			self.friendsV.bodyTableV.reloadData();
-		}) { err in print(err.localizedDescription) };
-	};
-
-	func getChats() {
-		/*
-
-		 firebase 資料格式
-
-		 chats
-		 - uid (個人)
-		 		- uid (對方)
-		 				- timestamp
-							 - content: String
-							 - date: Int
-							 - from: String
-							 - to: String
-		 					 - read: Int
-
-		 */
-		guard let userid = Auth.auth().currentUser?.uid else { return; };
-
-		ref.child("chatbox").child(userid).observe(.childAdded, with: { snap in
-			guard let data = snap.value as? [String:Any] else { return; };
-
-			self.chats.append(data);
-
-			self.chats.sort { a, b -> Bool in
-				let A = a["updated"] as? String ?? "";
-				let B = b["updated"] as? String ?? "";
-				return A.compare(B) == .orderedDescending;
-			};
-
-			self.chatsV.bodyTableV.reloadData();
 		});
 
-		ref.child("chatbox").child(userid).observe(.childChanged, with: { snap in
+		ref.child("friends/\(auth.uid)").observe(.childRemoved, with: { snap in
 			guard let data = snap.value as? [String:Any] else { return; };
 
-			let index = self.chats.firstIndex { e in
-				let A = e["uid"] as? String ?? "";
+			let index = _friends.firstIndex { chat in
+				let A = chat["uid"] as? String ?? "";
 				let B = data["uid"] as? String ?? "";
 				return A == B;
 			};
+			_friends.remove(at: index ?? -1);
 
-			self.chats.remove(at: index ?? -1);
-			self.chats.append(data)
+			self.friendsV.bodyTableV.reloadData();
+		});
+	};
 
-			self.chats.sort { a, b -> Bool in
-				let A = a["updated"] as? String ?? "";
-				let B = b["updated"] as? String ?? "";
-				return A.compare(B) == .orderedDescending;
+	func getChats() {
+		guard let auth = Auth.auth().currentUser else { return; };
+
+		ref.child("chatbox/\(auth.uid)").observe(.childAdded, with: { snap in
+			guard
+				let data = snap.value as? [String:Any],
+				let isArchieve = data["isArchieve"] as? Bool
+			else { return; };
+
+			if (isArchieve) {
+				_archieve.append(data);
+				_archieve.sort { a, b -> Bool in
+					guard
+						let A = a["updated"] as? String,
+						let B = b["updated"] as? String
+					else { return false; };
+
+					return A.compare(B) == .orderedDescending;
+				};
+			}
+			else {
+				_chats.append(data);
+				_chats.sort { a, b -> Bool in
+					guard
+						let A = a["updated"] as? String,
+						let B = b["updated"] as? String
+					else { return false; };
+
+					return A.compare(B) == .orderedDescending;
+				};
+			};
+			self.chatsV.bodyTableV.reloadData();
+		});
+
+		ref.child("chatbox/\(auth.uid)").observe(.childChanged, with: { snap in
+			guard
+				let data = snap.value as? [String:Any],
+				let isArchieve = data["isArchieve"] as? Bool
+			else { return; };
+
+			let chatIndex = _chats.firstIndex { chat in
+				guard
+					let A = chat["uid"] as? String,
+					let B = data["uid"] as? String
+				else { return false; };
+
+				return A == B;
 			};
 
+			if let index = chatIndex { _chats.remove(at: index); };
+
+			let archieveIndex = _archieve.firstIndex { chat in
+				guard
+					let A = chat["uid"] as? String,
+					let B = data["uid"] as? String
+				else { return false; };
+
+				return A == B;
+			};
+
+			if let index = archieveIndex { _archieve.remove(at: index); };
+
+			if (isArchieve) {
+				_archieve.append(data);
+				_archieve.sort { a, b -> Bool in
+					guard
+						let A = a["updated"] as? String,
+						let B = b["updated"] as? String
+					else { return false; };
+
+					return A.compare(B) == .orderedDescending;
+				};
+			}
+			else {
+				_chats.append(data);
+				_chats.sort { a, b -> Bool in
+					guard
+						let A = a["updated"] as? String,
+						let B = b["updated"] as? String
+					else { return false; };
+
+					return A.compare(B) == .orderedDescending;
+				};
+			};
 			self.chatsV.bodyTableV.reloadData();
 		});
 	};
@@ -226,36 +264,53 @@ class homeVC: UIViewController {
 extension homeVC: UITableViewDelegate, UITableViewDataSource {
 	func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
 		switch tableView {
-			case friendsV.bodyTableV	: return users.count;
-			case chatsV.bodyTableV		: return chats.count;
-			default							: return 0;
+			case friendsV.bodyTableV: return _friends.count;
+			case chatsV.bodyTableV: return _chats.count;
+			default: return 0;
 		};
 	};
 
 	func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
 		switch tableView {
-			case friendsV.bodyTableV	: return 90;
-			case chatsV.bodyTableV		: return 115;
-			default							: return 0;
+			case friendsV.bodyTableV: return 90;
+			case chatsV.bodyTableV: return 115;
+			default: return 0;
 		};
 	};
 
 	func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
 		switch tableView {
 			case friendsV.bodyTableV:
-				let data: [String:Any] = users[indexPath.row];
-				guard let cell = tableView.dequeueReusableCell(withIdentifier: "friendsTableVCell") as? friendsTableVCell, let head = data["head"] as? String, let name 	= data["name"] as? String else { return UITableViewCell(); };
+				let data: [String:Any] = _friends[indexPath.row];
+
+				guard
+					let cell = tableView.dequeueReusableCell(withIdentifier: "friendsTableVCell") as? friendsTableVCell,
+					let head = data["head"] as? String,
+					let name = data["name"] as? String
+				else { return UITableViewCell(); };
+
 				_=cell.headImageV.img(UIImage(name: head), mode: .scaleAspectFill);
 				_=cell.nameLbl.text(name);
+
 				return cell;
+
 			case chatsV.bodyTableV:
-				let data: [String:Any] = chats[indexPath.row];
-				guard let cell = tableView.dequeueReusableCell(withIdentifier: "chatsTableVCell") as? chatsTableVCell, let head = data["head"] as? String, let name = data["name"] as? String, let last = data["last"] as? String else { return UITableViewCell(); };
+				let data: [String:Any] = _chats[indexPath.row];
+
+				guard
+					let cell = tableView.dequeueReusableCell(withIdentifier: "chatsTableVCell") as? chatsTableVCell,
+					let head = data["head"] as? String,
+					let name = data["name"] as? String,
+					let last = data["last"] as? String
+				else { return UITableViewCell(); };
+
 				_=cell.headImageV.img(UIImage(name: head), mode: .scaleAspectFill);
 				_=cell.nameLbl.text(name);
 				_=cell.dateLbl.text("1分鐘前");
 				_=cell.contentLbl.text(last);
+
 				return cell;
+
 			default: return UITableViewCell();
 		};
 	};
@@ -263,20 +318,37 @@ extension homeVC: UITableViewDelegate, UITableViewDataSource {
 	func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
 		switch tableView {
 			case friendsV.bodyTableV:
-				let user = users[indexPath.row];
-				let vc = chatVC();
-				vc.uid = user["uid"] as? String ?? "";
-				vc.head = user["head"] as? String ?? "";
-				vc.name = user["name"] as? String ?? "";
+				let user = _friends[indexPath.row];
+				guard
+					let uid = user["uid"] as? String,
+					let head = user["head"] as? String,
+					let name = user["name"] as? String
+				else { return; };
+
+				let vc = chatVC()._ { e in
+					e.uid 	= uid;
+					e.head 	= head;
+					e.name 	= name;
+				};
+
 				self.present(vc, animated: true);
+
 			case chatsV.bodyTableV:
-				let chat = chats[indexPath.row];
-				let vc = chatVC();
-				vc.uid = chat["uid"] as? String ?? "";
-				vc.head = chat["head"] as? String ?? "";
-				vc.name = chat["name"] as? String ?? "";
+				let chat = _chats[indexPath.row];
+				guard
+					let uid 	= chat["uid"] as? String,
+					let head 	= chat["head"] as? String,
+					let name 	= chat["name"] as? String
+				else { return; };
+
+				let vc = chatVC()._ { e in
+					e.uid 	= uid;
+					e.head 	= head;
+					e.name 	= name;
+				};
+
 				self.present(vc, animated: true);
-				break;
+
 			default: break;
 		};
 	};

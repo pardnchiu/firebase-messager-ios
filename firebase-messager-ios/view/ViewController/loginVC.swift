@@ -1,49 +1,59 @@
-//
-//  loginVC.swift
-//  firebase-messager-ios
-//
-//  Created by Pardn on 2023/5/9.
-//
+/**
+ Copyright 2023 Pardn Ltd 帕登國際有限公司.
+ Created by Pardn Chiu 邱敬幃.
+ Email: chiuchingwei@icloud.com
+ */
 
 import Foundation
 import UIKit
 import FirebaseCore
 import FirebaseAuth
 
-var _black: UIColor = UIColor(named: "Black") ?? .clear;
-var _gray: UIColor = UIColor(named: "Gray") ?? .clear;
-var _darkGray: UIColor = UIColor(named: "DarkGray") ?? .clear;
-var _white: UIColor = UIColor(named: "White") ?? .clear;
+var _black		: UIColor = UIColor(name: "Black") 		?? .clear;
+var _gray			: UIColor = UIColor(name: "Gray") 		?? .clear;
+var _darkGray	: UIColor = UIColor(name: "DarkGray") ?? .clear;
+var _white		: UIColor = UIColor(name: "White") 		?? .clear;
 
 class loginVC: UIViewController {
 
-	var bodyStackV: UIStackView!
-	var emailTextField: UITextField!
-	var passwordTextField: UITextField!
+	var bodyStackV	: UIStackView!
+	var emailTextF	: UITextField!
+	var passwdTextF	: UITextField!
 
 	override func viewDidLoad() {
 		super.viewDidLoad();
 
+		let isDark = traitCollection.userInterfaceStyle == .dark;
+
+		_=view.bg(color: _white);
+		
 		bodyStackV = UIStackView(axis: .vert, align: .top);
 
-		emailTextField = UITextField()
+		emailTextF = UITextField()
+			.view(L: UIView(0, 0, 15, 0), mode: .always)
 			.text(placeholder: "輸入信箱")
 			.font(weight: .regular, size: 18)
+			.bg(color: _gray)
+			.radius(5)
 			.Weq(vw - 120)
-			.Heq(30)
+			.Heq(35);
 
-		passwordTextField =  UITextField()
+		passwdTextF = UITextField()
+			.view(L: UIView(0, 0, 15, 0), mode: .always)
 			.text(placeholder: "輸入密碼")
+			.text(secure: true)
 			.font(weight: .regular, size: 18)
+			.bg(color: _gray)
+			.radius(5)
 			.Weq(vw - 120)
-			.Heq(30)
+			.Heq(35);
 
 		_=view
 			.child([
 				bodyStackV
 					.child([
 						UIStackView(axis: .horz, align: .left, fill: .eqSpace)
-							.padding(T:  vh / 5)
+							.padding(T: vh / 5)
 							.Weq(vw)
 							.child([
 								UIView(),
@@ -51,20 +61,20 @@ class loginVC: UIViewController {
 									.child([
 										UIImageView()
 											.img(UIImage(name: "logo"), mode: .scaleAspectFit)
-											.shadow(color: .black, alpha: 0.2, blur: 3, x: 0, y: 3)
+											.shadow(color: _black, alpha: 0.2, blur: 3, x: 0, y: 3)
 											.Weq(80)
 											.Heq(80),
 										UIStackView(axis: .vert, align: .top, gap: 3)
 											.padding(T: 5)
 											.child([
 												UILabel()
-													.text("Firebase Messager", color: .black, align: .left, row: 1, wrap: .byClipping)
+													.text("Firebase Messager", color: _black, align: .left, row: 1, wrap: .byClipping)
 													.font(weight: .regular, size: 16),
 												UILabel()
-													.text("Firebase 即時訊息", color: .black, align: .left, row: 1, wrap: .byClipping)
+													.text("Firebase 即時訊息", color: _black, align: .left, row: 1, wrap: .byClipping)
 													.font(weight: .bold, size: 22),
 												UILabel()
-													.text("iOS 版本", color: .black, align: .left, row: 1, wrap: .byClipping)
+													.text("iOS 版本", color: _black, align: .left, row: 1, wrap: .byClipping)
 													.font(weight: .regular, size: 18)
 											])
 									]),
@@ -74,24 +84,26 @@ class loginVC: UIViewController {
 							.padding(T: 40)
 							.padding(horz: 60)
 							.child([
-								emailTextField,
-								passwordTextField,
+								emailTextF,
+								passwdTextF,
 								UIStackView(axis: .horz, align: .left, gap: 30)
 									.child([
 										UIButton()
-											.text("登入", color: .systemBlue)
+											.text("登入", color: isDark ? _black : .systemBlue)
 											.font(weight: .medium, size: 20)
-											.bg(color: UIColor(hex: "eee"))
+											.touch(down: self, #selector(authLogin))
+											.bg(color: _gray)
+											.radius(5)
 											.Weq((vw - 150) / 2)
-											.Heq(35)
-											.touch(down: self, #selector(login)),
+											.Heq(35),
 										UIButton()
-											.text("註冊", color: .systemBlue)
-											.font(weight: .regular, size: 20)
-											.bg(color: UIColor(hex: "eee"))
+											.text("註冊", color: isDark ? _black : .systemBlue)
+											.font(weight: .medium, size: 20)
+											.touch(down: self, #selector(presentSignupVC))
+											.bg(color: _gray)
+											.radius(5)
 											.Weq((vw - 150) / 2)
 											.Heq(35)
-											.touch(down: self, #selector(signup))
 									])
 							]),
 						UIView()
@@ -106,34 +118,30 @@ class loginVC: UIViewController {
 	};
 
 	override func viewDidAppear(_ animated: Bool) {
-		if (Auth.auth().currentUser != nil) {
-			let vc = homeVC();
-			vc.modalPresentationStyle = .overFullScreen;
-			self.present(vc, animated: true)
-			return;
+		guard let _ = Auth.auth().currentUser else { return; };
+		self.presentLoginVC();
+	};
+
+	@objc func authLogin() {
+		guard
+			let email = emailTextF.text,
+			let password = passwdTextF.text
+		else { return; };
+
+		Auth.auth().signIn(withEmail: email, password: password) { _, err in
+			if let err = err { print(err.localizedDescription); return; };
+			self.presentLoginVC();
 		};
 	};
 
-	@objc func login() {
-		guard let email = emailTextField.text, let password = passwordTextField.text else { return; };
-
-		Auth.auth().signIn(withEmail: email, password: password) { authResult, error in
-			if let error = error {
-				print(error);
-				return;
-			};
-			present();
-		};
-
-		func present() {
-			let vc = homeVC();
-			vc.modalPresentationStyle = .overFullScreen;
-			self.present(vc, animated: true)
-		}
+	@objc func presentLoginVC() {
+		let vc = homeVC();
+		vc.modalPresentationStyle = .overFullScreen;
+		self.present(vc, animated: true);
 	};
 
-	@objc func signup() {
+	@objc func presentSignupVC() {
 		let vc = signupVC();
-		present(vc, animated: true)
+		present(vc, animated: true);
 	};
 };

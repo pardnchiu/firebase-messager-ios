@@ -1,9 +1,8 @@
-//
-//  loginVC.swift
-//  firebase-messager-ios
-//
-//  Created by Pardn on 2023/5/9.
-//
+/**
+ Copyright 2023 Pardn Ltd 帕登國際有限公司.
+ Created by Pardn Chiu 邱敬幃.
+ Email: chiuchingwei@icloud.com
+ */
 
 import Foundation
 import UIKit
@@ -25,47 +24,63 @@ class signupVC: UIViewController {
 	override func viewDidLoad() {
 		super.viewDidLoad();
 
+		let isDark = traitCollection.userInterfaceStyle == .dark;
+
 		ref = Database.database().reference();
 
 		bodyStackV = UIStackView(axis: .vert, align: .top);
 
 		headBtn = UIButton()
-			.text("選擇頭像", color: _gray)
+			.touch(down: self, #selector(presentHeadSelectVC))
+			.text("選擇頭像", color: _black)
 			.img(UIImage(sys: "person.fill"), align: .left, gap: 5)
-			.bg(color: .white)
-			.Weq(140)
-			.Heq(140)
+			.bg(color: _gray)
 			.radius(70)
 			.clip(view: true)
-			.touch(down: self, #selector(presentHeadSelectVC))
+			.Weq(140)
+			.Heq(140)
 
 		nameTextF = UITextField()
+			.view(L: UIView(0, 0, 15, 0), mode: .always)
 			.text(placeholder: "輸入名稱")
 			.font(weight: .regular, size: 18)
+			.bg(color: _gray)
+			.radius(5)
 			.Weq(vw - 120)
-			.Heq(30)
+			.Heq(35);
 
 		emailTextF = UITextField()
+			.view(L: UIView(0, 0, 15, 0), mode: .always)
 			.text(placeholder: "輸入信箱")
 			.font(weight: .regular, size: 18)
+			.bg(color: _gray)
+			.radius(5)
 			.Weq(vw - 120)
-			.Heq(30)
+			.Heq(35);
 
 		passwdTextF = UITextField()
+			.view(L: UIView(0, 0, 15, 0), mode: .always)
 			.text(placeholder: "輸入密碼")
+			.text(secure: true)
 			.font(weight: .regular, size: 18)
+			.bg(color: _gray)
+			.radius(5)
 			.Weq(vw - 120)
-			.Heq(30)
+			.Heq(35);
 
 		checkTextF = UITextField()
+			.view(L: UIView(0, 0, 15, 0), mode: .always)
 			.text(placeholder: "確認密碼")
+			.text(secure: true)
 			.font(weight: .regular, size: 18)
+			.bg(color: _gray)
+			.radius(5)
 			.Weq(vw - 120)
-			.Heq(30)
+			.Heq(35);
 
 		_=view
 			.child([
-				UIVisualEffectView(style: .extraLight)
+				UIVisualEffectView(style: isDark ? .dark : .extraLight)
 					.frame(0, 0, vw, vh),
 				bodyStackV
 					.child([
@@ -91,12 +106,13 @@ class signupVC: UIViewController {
 								UIStackView(axis: .horz, align: .left)
 									.child([
 										UIButton()
-											.text("確定註冊", color: .systemBlue)
+											.touch(down: self, #selector(singup))
+											.text("確定註冊", color: isDark ? _black : .systemBlue)
 											.font(weight: .medium, size: 18)
-											.bg(color: .white)
+											.bg(color: _gray)
+											.radius(5)
 											.Weq(vw - 120)
 											.Heq(35)
-											.touch(down: self, #selector(singup))
 									])
 							]),
 						UIView()
@@ -117,26 +133,29 @@ class signupVC: UIViewController {
 
 	@objc func singup() {
 		guard
-			let name = nameTextF.text,
-			let email = emailTextF.text,
-			let password = passwdTextF.text,
-			let check = checkTextF.text,
-			let head = headBtn.configuration?.background.image?.imageAsset?.value(forKey: "assetName")
+			let name 		= nameTextF.text,
+			let email 	= emailTextF.text,
+			let passwd 	= passwdTextF.text,
+			let check		= checkTextF.text,
+			let head 		= headBtn.configuration?.background.image?.imageAsset?.value(forKey: "assetName")
 		else { return; };
 
-		if (check != password) { return; };
+		if (check != passwd) { return; };
 
 		let now = Date();
 		let timestamp = "\(now.timeIntervalSince1970)";
 
-		Auth.auth().createUser(withEmail: email, password: password) { authResult, error in
-			guard let user = authResult?.user else { return; };
-			self.ref.child("users").child(user.uid).setValue([
+		Auth.auth().createUser(withEmail: email, password: passwd) { r, err in
+			if let err = err { print(err.localizedDescription); return; };
+
+			guard let auth = r?.user else { return; };
+
+			self.ref.child("users").child(auth.uid).setValue([
 				"head": head,
 				"name": name,
 				"signup": timestamp
-			]) { (error: Error?, ref: DatabaseReference) in
-				if let _ = error { return; };
+			]) { err, ref in
+				if let err = err { print(err.localizedDescription); return; };
 				self.dismiss(animated: true);
 			};
 		};

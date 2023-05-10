@@ -13,6 +13,7 @@ extension UITextField {
 
 	public func text(placeholder value: String) -> Self { placeholder = value; return self; };
 
+	public func text(secure bool: Bool) -> Self { isSecureTextEntry = bool; return self; };
 
 	var fontName	: String 	{ get { return self.font?.fontName == ".SFUI-Regular" ? "Helvetica" : self.font?.fontName ?? "Helvetica" } };
 	
@@ -48,5 +49,7 @@ extension UITextField {
 
 	public func font(sizeToFit: Bool) -> Self { self.adjustsFontSizeToFitWidth = sizeToFit; return self; };
 
-	public func view(left: UIView, mode: ViewMode) -> Self { leftView = left; leftViewMode = mode; return self; };
+	public func view(L: UIView, mode: ViewMode) -> Self { leftView = L; leftViewMode = mode; return self; };
+
+	public func view(R: UIView, mode: ViewMode) -> Self { rightView = R; rightViewMode = mode; return self; };
 };

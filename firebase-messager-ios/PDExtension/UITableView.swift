@@ -19,7 +19,7 @@ extension UITableView {
 	
 	public func padding(B: CGFloat) -> Self { contentInset = UIEdgeInsets(top: contentInset.top, left: contentInset.left, bottom: B, right: contentInset.right); return self; };
 
-	public func indicator(val: Bool) -> Self { showsVerticalScrollIndicator = val; showsHorizontalScrollIndicator = val; return self; };
+	override public func indicator(val: Bool) -> Self { showsVerticalScrollIndicator = val; showsHorizontalScrollIndicator = val; return self; };
 
 	public func rowH(auto: CGFloat) -> Self { estimatedRowHeight = auto; rowHeight = UITableView.automaticDimension; return self; };
 };

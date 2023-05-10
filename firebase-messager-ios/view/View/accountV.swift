@@ -6,6 +6,9 @@
 
 import Foundation
 import UIKit
+import FirebaseCore
+import FirebaseAuth
+import FirebaseDatabase
 
 class accountV: UIScrollView {
 	
@@ -16,11 +19,15 @@ class accountV: UIScrollView {
 	var nameTextF		: UITextField!
 	var emailTextF	: UITextField!
 	var passwdTextF	: UITextField!
+
+	var ref: DatabaseReference!
 	
 	convenience init(rootVC: homeVC) {
 		self.init();
 		
 		self.rootVC = rootVC;
+
+		ref = Database.database().reference();
 		
 		headerLbl = UILabel(15, 0, vw - 40, 100)
 			.attr(txt: "帳戶", clr: _black, align: .left)
@@ -33,34 +40,36 @@ class accountV: UIScrollView {
 			.padding(L: 15);
 		
 		headBtn = UIButton()
+			.touch(down: self, #selector(presentHeadSelectVC))
 			.bg(image: nil, mode: .scaleAspectFill)
 			.bg(color: _gray)
-			.Weq(160)
-			.Heq(160)
 			.radius(80)
 			.clip(view: true)
-			.touch(down: self, #selector(presentHeadSelectVC));
-		
+			.Weq(160)
+			.Heq(160);
 		nameTextF = UITextField()
-			.view(left:  UIView(0, 0, 15, 30), mode: .always)
+			.view(L: UIView(0, 0, 15, 30), mode: .always)
+			.view(R: UIButton(0, 0, 30, 30).img(UIImage(sys: "arrow.triangle.2.circlepath.circle.fill")).text(color: _black).touch(down: self, #selector(updateName)), mode: .whileEditing)
 			.bg(color: _gray)
+			.radius(5)
 			.Weq(vw - 70)
-			.Heq(30)
-			.radius(5);
+			.Heq(30);
 		
 		emailTextF = UITextField()
-			.view(left:  UIView(0, 0, 15, 30), mode: .always)
+			.view(L:  UIView(0, 0, 15, 30), mode: .always)
+			.view(R: UIButton(0, 0, 30, 30).img(UIImage(sys: "arrow.triangle.2.circlepath.circle.fill")).text(color: _black).touch(down: self, #selector(updateEmail)), mode: .whileEditing)
 			.bg(color: _gray)
+			.radius(5)
 			.Weq(vw - 70)
-			.Heq(30)
-			.radius(5);
+			.Heq(30);
 		
 		passwdTextF = UITextField()
-			.view(left:  UIView(0, 0, 15, 30), mode: .always)
+			.view(L:  UIView(0, 0, 15, 30), mode: .always)
+			.view(R: UIButton(0, 0, 30, 30).img(UIImage(sys: "arrow.triangle.2.circlepath.circle.fill")).text(color: _black).touch(down: self, #selector(updatePasswd)), mode: .whileEditing)
 			.bg(color: _gray)
 			.Weq(vw - 70)
-			.Heq(30)
-			.radius(5);
+			.radius(5)
+			.Heq(30);
 		
 		_=child([
 			bodyStackV
@@ -99,6 +108,42 @@ class accountV: UIScrollView {
 			.Beq(B: self)
 			.Req(R: self)
 	};
+
+	@objc func updateName() {
+		guard
+			let auth = Auth.auth().currentUser,
+			let name = nameTextF.text
+		else { return; };
+
+		ref.child("users/\(auth.uid)").updateChildValues([
+			"name": name
+		], withCompletionBlock: { err, ref in
+			if let err = err { return print(err.localizedDescription); };
+			self.alert("成功更改名稱");
+		});
+	};
+
+	@objc func updateEmail() {
+		guard
+			let _ = Auth.auth().currentUser,
+			let email = emailTextF.text
+		else { return; };
+		Auth.auth().currentUser?.updateEmail(to: email) { err in
+			if let err = err { return print(err.localizedDescription); };
+			self.alert("成功更改信箱");
+		};
+	};
+
+	@objc func updatePasswd() {
+		guard
+			let _ = Auth.auth().currentUser,
+			let password = passwdTextF.text
+		else { return; };
+		Auth.auth().currentUser?.updatePassword(to: password) { err in
+			if let err = err { return print(err.localizedDescription); };
+			self.alert("成功更改密碼");
+		};
+	};
 	
 	@objc func presentHeadSelectVC() {
 		let vc = headSelectVC();
@@ -107,4 +152,14 @@ class accountV: UIScrollView {
 			return;
 		};
 	};
-}
+
+	func alert(_ message: String) {
+		let alert = UIAlertController(title: "通知", message: message, preferredStyle: .alert);
+		let cancel = UIAlertAction(title: "確定", style: .cancel, handler: nil)
+		alert.addAction(cancel)
+		guard let _ = rootVC.presentedViewController else {
+			rootVC.present(alert, animated: true);
+			return;
+		};
+	};
+};
